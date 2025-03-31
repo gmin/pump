@@ -3,31 +3,35 @@ package service
 import (
 	"backend/config"
 	"backend/internal/model"
+	"backend/pkg/solana"
 	"context"
 	"fmt"
 	"time"
 
-	"github.com/gagliardetto/solana-go"
-	"github.com/gagliardetto/solana-go/rpc"
 	"gorm.io/gorm"
 )
 
 type ContractService struct {
 	config *config.Config
 	db     *gorm.DB
-	client *rpc.Client
+	solana *solana.Client
 }
 
-func NewContractService(config *config.Config, db *gorm.DB) *ContractService {
+func NewContractService(config *config.Config, db *gorm.DB) (*ContractService, error) {
+	client, err := solana.NewClient(config.Solana.RPCURL, config.Solana.ProgramID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create solana client: %v", err)
+	}
+
 	return &ContractService{
 		config: config,
 		db:     db,
-		client: rpc.New(config.Solana.RPCURL),
-	}
+		solana: client,
+	}, nil
 }
 
 // DeployContract 部署合约并收取手续费
-func (s *ContractService) DeployContract(ctx context.Context, walletAddress string) (*model.Contract, error) {
+func (s *ContractService) DeployContract(ctx context.Context, walletAddress string, payerPrivateKey []byte) (*model.Contract, error) {
 	// 1. 创建合约记录
 	contract := &model.Contract{
 		WalletAddress: walletAddress,
@@ -41,55 +45,20 @@ func (s *ContractService) DeployContract(ctx context.Context, walletAddress stri
 		return nil, fmt.Errorf("failed to create contract record: %v", err)
 	}
 
-	// 2. 创建Solana客户端
-	client := solana.NewClient(s.config.Solana.RPCURL)
-
-	// 3. 创建交易
-	tx, err := s.createDeployTransaction(ctx, walletAddress)
+	// 2. 部署合约
+	sig, err := s.solana.DeployProgram(ctx, payerPrivateKey)
 	if err != nil {
 		contract.Status = "failed"
 		s.db.Save(contract)
-		return nil, fmt.Errorf("failed to create transaction: %v", err)
+		return nil, fmt.Errorf("failed to deploy program: %v", err)
 	}
 
-	// 4. 发送交易
-	sig, err := client.SendTransaction(ctx, tx)
-	if err != nil {
-		contract.Status = "failed"
-		s.db.Save(contract)
-		return nil, fmt.Errorf("failed to send transaction: %v", err)
-	}
-
-	// 5. 等待确认
-	status, err := client.WaitForTransactionConfirmation(ctx, sig)
-	if err != nil {
-		contract.Status = "failed"
-		s.db.Save(contract)
-		return nil, fmt.Errorf("failed to confirm transaction: %v", err)
-	}
-
-	if status.Err != nil {
-		contract.Status = "failed"
-		s.db.Save(contract)
-		return nil, fmt.Errorf("transaction failed: %v", status.Err)
-	}
-
-	// 6. 更新合约记录
+	// 3. 更新合约记录
 	contract.Status = "success"
-	contract.MintAddress = sig.String() // 这里需要从交易中获取实际的Mint地址
+	contract.MintAddress = sig
 	s.db.Save(contract)
 
 	return contract, nil
-}
-
-// createDeployTransaction 创建部署合约的交易
-func (s *ContractService) createDeployTransaction(ctx context.Context, walletAddress string) (*solana.Transaction, error) {
-	// TODO: 实现合约部署交易创建逻辑
-	// 1. 创建程序账户
-	// 2. 部署程序
-	// 3. 初始化程序
-	// 4. 添加手续费转账指令
-	return nil, nil
 }
 
 // GetContract 获取合约信息
@@ -108,4 +77,26 @@ func (s *ContractService) GetContracts(ctx context.Context, walletAddress string
 		return nil, fmt.Errorf("failed to get contracts: %v", err)
 	}
 	return contracts, nil
+}
+
+// VerifyDeployment 验证合约是否部署成功
+func (s *ContractService) VerifyDeployment(ctx context.Context, mintAddress string) (bool, error) {
+	// 1. 获取合约记录
+	contract, err := s.GetContract(ctx, mintAddress)
+	if err != nil {
+		return false, err
+	}
+
+	// 2. 检查合约账户是否存在
+	account, err := s.solana.GetProgramAccount(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get program account: %v", err)
+	}
+
+	// 3. 如果账户存在且是程序账户,则部署成功
+	if account != nil && account.Owner.Equals(solana.BPFLoaderID) {
+		return true, nil
+	}
+
+	return false, nil
 }
