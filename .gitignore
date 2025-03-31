@@ -1,0 +1,36 @@
+# Rust
+**/*.rs.bk
+target/
+Cargo.lock
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+build/
+*.o
+*.a
+*.lib
+
+# Logs
+*.log
+logs/ 
