@@ -1,33 +1,37 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Layout } from 'antd';
-import Home from './pages/Home.tsx';
-import Deploy from './pages/Deploy.tsx';
-import Contracts from './pages/Contracts.tsx';
-import ContractDetail from './pages/ContractDetail.tsx';
-import Transactions from './pages/Transactions.tsx';
-import Navbar from './components/Navbar.tsx';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import Layout from './components/Layout';
+import Home from './pages/Home';
+import MintHistory from './pages/MintHistory';
 
-const { Header, Content } = Layout;
+const theme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#90caf9',
+    },
+    secondary: {
+      main: '#f48fb1',
+    },
+  },
+});
 
-function App() {
+const App: React.FC = () => {
   return (
-    <Router>
-      <Layout style={{ minHeight: '100vh' }}>
-        <Header style={{ padding: 0, background: '#fff' }}>
-          <Navbar />
-        </Header>
-        <Content style={{ padding: '24px', background: '#f0f2f5' }}>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <Layout>
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/deploy" element={<Deploy />} />
-            <Route path="/contracts" element={<Contracts />} />
-            <Route path="/contracts/:address" element={<ContractDetail />} />
-            <Route path="/transactions" element={<Transactions />} />
+            <Route path="/history" element={<MintHistory />} />
           </Routes>
-        </Content>
-      </Layout>
-    </Router>
+        </Layout>
+      </Router>
+    </ThemeProvider>
   );
-}
+};
 
 export default App;

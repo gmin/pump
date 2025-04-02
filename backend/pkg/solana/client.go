@@ -85,34 +85,69 @@ func (c *Client) getProgramBinary() ([]byte, error) {
 
 // createDeployTransaction 创建部署交易
 func (c *Client) createDeployTransaction(ctx context.Context, payerPrivateKey []byte, programData []byte) (*solana.Transaction, error) {
-	// 1. 创建交易
-	tx := solana.NewTransaction()
+	// 1. 获取最新的区块哈希
+	recent, err := c.rpcClient.GetRecentBlockhash(ctx, rpc.CommitmentFinalized)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get recent blockhash: %v", err)
+	}
 
-	// 2. 添加创建程序账户指令
-	createAccountIx := solana.NewCreateAccountInstruction(
-		uint64(len(programData)),    // 程序大小
-		solana.PROGRAM_DATA_ACCOUNT, // 所有者
-		c.programID,                 // 新账户地址
-		solana.SystemProgramID,      // 系统程序
+	// 2. 创建私钥和公钥
+	privKey := solana.PrivateKey(payerPrivateKey)
+	payer := privKey.PublicKey()
+
+	// 3. 准备指令
+	instructions := make([]solana.Instruction, 0)
+
+	// 4. 添加创建程序账户指令
+	createAccountIx := solana.NewInstruction(
+		solana.SystemProgramID,
+		solana.AccountMetaSlice{
+			solana.NewAccountMeta(payer, true, true),                     // 支付账户
+			solana.NewAccountMeta(c.programID, true, true),               // 新程序账户
+			solana.NewAccountMeta(solana.SysVarRentPubkey, false, false), // 租金账户
+		},
+		[]byte{0, 0, 0, 0, 0, 0, 0, 0}, // 创建账户指令数据
 	)
-	tx.AddInstruction(createAccountIx)
+	instructions = append(instructions, createAccountIx)
 
-	// 3. 添加部署程序指令
-	deployIx := solana.NewDeployInstruction(
-		programData,        // 程序数据
-		c.programID,        // 程序ID
-		solana.BPFLoaderID, // BPF加载器
+	// 5. 添加部署程序指令
+	deployIx := solana.NewInstruction(
+		solana.BPFLoaderProgramID,
+		solana.AccountMetaSlice{
+			solana.NewAccountMeta(c.programID, true, true),                // 程序账户
+			solana.NewAccountMeta(payer, true, false),                     // 支付账户
+			solana.NewAccountMeta(solana.SysVarRentPubkey, false, false),  // 租金账户
+			solana.NewAccountMeta(solana.SysVarClockPubkey, false, false), // 时钟账户
+		},
+		programData,
 	)
-	tx.AddInstruction(deployIx)
+	instructions = append(instructions, deployIx)
 
-	// 4. 签名交易
-	payer := solana.NewWallet(payerPrivateKey)
-	tx.Sign(payer)
+	// 6. 创建交易
+	tx, err := solana.NewTransaction(
+		instructions,
+		recent.Value.Blockhash,
+		solana.TransactionPayer(payer),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create transaction: %v", err)
+	}
+
+	// 7. 签名交易
+	_, err = tx.Sign(func(key solana.PublicKey) *solana.PrivateKey {
+		if key.Equals(payer) {
+			return &privKey
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign transaction: %v", err)
+	}
 
 	return tx, nil
 }
 
 // GetProgramAccount 获取程序账户信息
-func (c *Client) GetProgramAccount(ctx context.Context) (*rpc.AccountInfo, error) {
+func (c *Client) GetProgramAccount(ctx context.Context) (*rpc.GetAccountInfoResult, error) {
 	return c.rpcClient.GetAccountInfo(ctx, c.programID)
 }

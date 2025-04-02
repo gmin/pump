@@ -1,42 +1,57 @@
 package service
 
 import (
-	"backend/config"
-	"backend/internal/model"
-	"backend/pkg/solana"
 	"context"
 	"fmt"
 	"time"
 
+	"github.com/tonykwok/pump-token/backend/internal/model"
+
+	"github.com/gagliardetto/solana-go"
+	"github.com/gagliardetto/solana-go/programs/token"
+	"github.com/gagliardetto/solana-go/rpc"
 	"gorm.io/gorm"
 )
 
-type ContractService struct {
-	config *config.Config
-	db     *gorm.DB
-	solana *solana.Client
+type DeployTokenParams struct {
+	Name        string
+	Symbol      string
+	TotalSupply int64
+	Decimals    int
+	Price       float64
+	MinAmount   int64
+	MaxAmount   int64
+	StartTime   time.Time
+	EndTime     time.Time
 }
 
-func NewContractService(config *config.Config, db *gorm.DB) (*ContractService, error) {
-	client, err := solana.NewClient(config.Solana.RPCURL, config.Solana.ProgramID)
+type ContractService struct {
+	db     *gorm.DB
+	solana *SolanaService
+	client *rpc.Client
+	wallet *solana.PrivateKey
+}
+
+func NewContractService(db *gorm.DB, client *rpc.Client, wallet *solana.PrivateKey) (*ContractService, error) {
+	solanaService, err := NewSolanaService()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create solana client: %v", err)
+		return nil, fmt.Errorf("failed to create solana service: %v", err)
 	}
 
 	return &ContractService{
-		config: config,
 		db:     db,
-		solana: client,
+		solana: solanaService,
+		client: client,
+		wallet: wallet,
 	}, nil
 }
 
-// DeployContract 部署合约并收取手续费
-func (s *ContractService) DeployContract(ctx context.Context, walletAddress string, payerPrivateKey []byte) (*model.Contract, error) {
+// Deploy 部署代币合约
+func (s *ContractService) Deploy(ctx context.Context, walletAddress string, programData []byte) (*model.Contract, error) {
 	// 1. 创建合约记录
 	contract := &model.Contract{
 		WalletAddress: walletAddress,
 		Status:        "pending",
-		FeeAmount:     s.config.Solana.MinFee,
 		CreatedAt:     time.Now(),
 		UpdatedAt:     time.Now(),
 	}
@@ -46,7 +61,7 @@ func (s *ContractService) DeployContract(ctx context.Context, walletAddress stri
 	}
 
 	// 2. 部署合约
-	sig, err := s.solana.DeployProgram(ctx, payerPrivateKey)
+	contractAddress, signature, err := s.solana.DeployProgram(ctx, programData)
 	if err != nil {
 		contract.Status = "failed"
 		s.db.Save(contract)
@@ -55,16 +70,17 @@ func (s *ContractService) DeployContract(ctx context.Context, walletAddress stri
 
 	// 3. 更新合约记录
 	contract.Status = "success"
-	contract.MintAddress = sig
+	contract.ContractAddress = contractAddress
+	contract.Signature = signature
 	s.db.Save(contract)
 
 	return contract, nil
 }
 
 // GetContract 获取合约信息
-func (s *ContractService) GetContract(ctx context.Context, mintAddress string) (*model.Contract, error) {
+func (s *ContractService) GetContract(ctx context.Context, contractAddress string) (*model.Contract, error) {
 	var contract model.Contract
-	if err := s.db.Where("mint_address = ?", mintAddress).First(&contract).Error; err != nil {
+	if err := s.db.Where("contract_address = ?", contractAddress).First(&contract).Error; err != nil {
 		return nil, fmt.Errorf("contract not found: %v", err)
 	}
 	return &contract, nil
@@ -79,24 +95,57 @@ func (s *ContractService) GetContracts(ctx context.Context, walletAddress string
 	return contracts, nil
 }
 
-// VerifyDeployment 验证合约是否部署成功
-func (s *ContractService) VerifyDeployment(ctx context.Context, mintAddress string) (bool, error) {
-	// 1. 获取合约记录
-	contract, err := s.GetContract(ctx, mintAddress)
+func (s *ContractService) DeployToken(ctx context.Context, params DeployTokenParams) (string, error) {
+	// 1. 创建代币账户
+	tokenAccount, err := solana.NewRandomPrivateKey()
 	if err != nil {
-		return false, err
+		return "", fmt.Errorf("failed to create token account: %w", err)
 	}
 
-	// 2. 检查合约账户是否存在
-	account, err := s.solana.GetProgramAccount(ctx)
+	// 2. 创建代币账户指令
+	createTokenAccountInstruction := solana.NewInstruction(
+		token.ProgramID,
+		solana.AccountMetaSlice{
+			solana.NewAccountMeta(s.wallet.PublicKey(), true, true),     // 支付账户
+			solana.NewAccountMeta(tokenAccount.PublicKey(), true, true), // 代币账户
+			solana.NewAccountMeta(s.wallet.PublicKey(), true, false),    // 代币所有者
+			solana.NewAccountMeta(solana.TokenProgramID, false, false),  // 代币程序
+		},
+		[]byte{1}, // 1 表示创建代币账户指令
+	)
+
+	// 3. 创建交易
+	tx, err := solana.NewTransaction(
+		[]solana.Instruction{createTokenAccountInstruction},
+		solana.Hash{}, // 使用最新的 blockhash
+		solana.TransactionPayer(s.wallet.PublicKey()),
+	)
 	if err != nil {
-		return false, fmt.Errorf("failed to get program account: %v", err)
+		return "", fmt.Errorf("failed to create transaction: %w", err)
 	}
 
-	// 3. 如果账户存在且是程序账户,则部署成功
-	if account != nil && account.Owner.Equals(solana.BPFLoaderID) {
-		return true, nil
+	// 4. 签名交易
+	sig, err := tx.Sign(func(key solana.PublicKey) *solana.PrivateKey {
+		if key.Equals(s.wallet.PublicKey()) {
+			return s.wallet
+		}
+		return nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to sign transaction: %w", err)
 	}
 
-	return false, nil
+	// 5. 发送交易
+	_, err = s.client.SendTransaction(ctx, tx)
+	if err != nil {
+		return "", fmt.Errorf("failed to send transaction: %w", err)
+	}
+
+	// 6. 等待交易确认
+	err = s.solana.WaitForConfirmation(ctx, sig[0].String())
+	if err != nil {
+		return "", fmt.Errorf("failed to confirm transaction: %w", err)
+	}
+
+	return tokenAccount.PublicKey().String(), nil
 }
