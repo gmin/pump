@@ -30,7 +30,7 @@ func (s *MintService) GetActiveMints(ctx context.Context) ([]types.ActiveMint, e
 			t.name,
 			t.symbol,
 			m.price,
-			m.staking_percentage,
+			m.liquidity_percentage,
 			m.max_amount,
 			m.end_time,
 			t.total_supply
@@ -79,7 +79,7 @@ func (s *MintService) GetMintInfo(ctx context.Context, contractAddress, walletAd
 			t.name,
 			t.symbol,
 			m.price,
-			m.staking_percentage,
+			m.liquidity_percentage,
 			m.max_amount,
 			m.end_time,
 			t.total_supply,
@@ -89,7 +89,7 @@ func (s *MintService) GetMintInfo(ctx context.Context, contractAddress, walletAd
 		LEFT JOIN mint_records mr ON m.contract_address = mr.contract_address 
 			AND mr.wallet_address = $1
 		WHERE m.contract_address = $2
-		GROUP BY m.contract_address, t.name, t.symbol, m.price, m.staking_percentage, 
+		GROUP BY m.contract_address, t.name, t.symbol, m.price, m.liquidity_percentage, 
 			m.max_amount, m.end_time, t.total_supply
 	`
 
@@ -169,4 +169,15 @@ func (s *MintService) Mint(ctx context.Context, contractAddress, walletAddress s
 
 	// 提交事务
 	return tx.Commit()
+}
+
+type MintConfig struct {
+	ContractAddress     string    `json:"contractAddress"`
+	Name                string    `json:"name"`
+	Symbol              string    `json:"symbol"`
+	Price               float64   `json:"price"`
+	LiquidityPercentage int       `json:"liquidityPercentage"`
+	TotalMinted         int64     `json:"totalMinted"`
+	StartTime           time.Time `json:"startTime"`
+	EndTime             time.Time `json:"endTime"`
 }
