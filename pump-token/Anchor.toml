@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-pump_token = "8TJSHwHPT3syXtT6E3xz6j92qgSAUVWiKeQiSFQjzbka"
+test_project = "HMmWTMgF7P9jMhuqhwB4Bo4GPcH6fbJ9qJeVPggirNJY"
 
 [registry]
 url = "https://api.apr.dev"

@@ -65,15 +65,18 @@ pub enum TokenError {
     #[msg("Invalid duration")]
     InvalidDuration,
     
-    #[msg("Invalid reward rate")]
-    InvalidRewardRate,
-    
-    #[msg("Staking not active")]
-    StakingNotActive,
-    
-    #[msg("Staking period not ended")]
-    StakingPeriodNotEnded,
-    
     #[msg("Already claimed")]
     AlreadyClaimed,
+
+    #[msg("Not claimed yet")]
+    NotClaimedYet,
+
+    #[msg("Liquidity not active")]
+    LiquidityNotActive,
+
+    #[msg("Liquidity already exists")]
+    LiquidityAlreadyExists,
+
+    #[msg("Liquidity not exists")]
+    LiquidityNotExists,
 } 

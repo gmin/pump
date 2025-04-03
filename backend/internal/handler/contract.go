@@ -18,12 +18,6 @@ type DeployRequest struct {
 	MintLimitPerAddress  int       `json:"mintLimitPerAddress"`
 	MintEndDate          time.Time `json:"mintEndDate"`
 	AdditionalMintAmount int       `json:"additionalMintAmount"`
-	EnableStaking        bool      `json:"enableStaking"`
-	StakingType          string    `json:"stakingType,omitempty"`
-	StakingPeriods       []struct {
-		Months     int `json:"months"`
-		Percentage int `json:"percentage"`
-	} `json:"stakingPeriods,omitempty"`
 }
 
 type DeployResponse struct {
@@ -132,30 +126,6 @@ func validateDeployRequest(req DeployRequest) error {
 		return errors.New("增发资产数量必须大于 0")
 	}
 
-	// 验证质押挖矿参数
-	if req.EnableStaking {
-		if req.StakingType != "LP" && req.StakingType != "SINGLE" {
-			return errors.New("无效的挖矿类型")
-		}
-		if len(req.StakingPeriods) == 0 {
-			return errors.New("必须设置至少一个质押周期")
-		}
-
-		totalPercentage := 0
-		for _, period := range req.StakingPeriods {
-			if period.Months <= 0 {
-				return errors.New("质押周期必须大于 0")
-			}
-			if period.Percentage <= 0 {
-				return errors.New("收益分配比例必须大于 0")
-			}
-			totalPercentage += period.Percentage
-		}
-		if totalPercentage != 100 {
-			return errors.New("质押收益分配比例总和必须为 100%")
-		}
-	}
-
 	return nil
 }
 
@@ -239,4 +209,17 @@ func (h *ContractHandler) DeployToken(c *gin.Context) {
 	c.JSON(http.StatusOK, DeployTokenResponse{
 		ContractAddress: contractAddress,
 	})
+}
+
+type DeployContractRequest struct {
+	Name                string    `json:"name" binding:"required"`
+	Symbol              string    `json:"symbol" binding:"required"`
+	Decimals            int       `json:"decimals" binding:"required"`
+	TotalSupply         int64     `json:"totalSupply" binding:"required"`
+	Price               float64   `json:"price" binding:"required"`
+	MinAmount           int64     `json:"minAmount" binding:"required"`
+	MaxAmount           int64     `json:"maxAmount" binding:"required"`
+	StartTime           time.Time `json:"startTime" binding:"required"`
+	EndTime             time.Time `json:"endTime" binding:"required"`
+	LiquidityPercentage int       `json:"liquidityPercentage" binding:"required"`
 }
