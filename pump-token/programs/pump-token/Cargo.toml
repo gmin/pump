@@ -5,22 +5,17 @@ description = "Created with Anchor"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "lib"]
+crate-type = ["bpf", "lib"]
 name = "pump_token"
 
 [features]
-default = ["custom-heap", "custom-panic", "solana", "no-entrypoint"]
-cpi = ["no-entrypoint"]
+default = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-idl-build = ["anchor-lang/idl-build"]
-custom-heap = []
-custom-panic = []
-solana = []
-anchor-debug = []
+cpi = ["no-entrypoint"]
 
 [dependencies]
-anchor-lang = { version = "0.31.0", features = ["init-if-needed"] }
-anchor-spl = { version = "0.31.0", features = ["metadata"] }
+anchor-lang = { version = "0.25.0", features = ["init-if-needed"] }
+anchor-spl = { version = "0.25.0", features = ["metadata"] }
 
