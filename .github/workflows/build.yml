@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  RUST_BACKTRACE: 1
+  RUST_LOG: debug
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -34,6 +38,14 @@ jobs:
       run: |
         sh -c "$(curl -sSfL https://release.solana.com/v1.17.9/install)"
         echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+        solana --version
+
+    - name: Setup Cargo config
+      run: |
+        mkdir -p $HOME/.cargo
+        echo '[build]' >> $HOME/.cargo/config.toml
+        echo 'rustflags = ["-C", "target-feature=+crt-static"]' >> $HOME/.cargo/config.toml
 
     - name: Check formatting
       run: cargo fmt -- --check
@@ -45,6 +57,7 @@ jobs:
       run: |
         cd pump-token/programs/pump-token
         cargo build --verbose
+        ls -la target/deploy/
 
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
