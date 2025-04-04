@@ -47,7 +47,7 @@ jobs:
         cargo build --verbose
 
     - name: Upload Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: pump-token
         path: pump-token/target/deploy/pump_token.so
