@@ -48,14 +48,16 @@ jobs:
         echo 'rustflags = ["-C", "target-feature=+crt-static"]' >> $HOME/.cargo/config.toml
 
     - name: Check formatting
+      working-directory: pump-token
       run: cargo fmt -- --check
 
     - name: Run clippy
+      working-directory: pump-token
       run: cargo clippy -- -D warnings
 
     - name: Build
+      working-directory: pump-token/programs/pump-token
       run: |
-        cd pump-token/programs/pump-token
         cargo build --verbose
         ls -la target/deploy/
 
