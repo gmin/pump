@@ -92,6 +92,17 @@ avm use 0.28.0
 
 ## 项目配置
 
+### 安装 Node.js 依赖
+```bash
+# 进入项目目录
+cd pump-token
+
+# 安装依赖
+npm install
+# 或者使用 yarn
+yarn install
+```
+
 ### Cargo.toml 配置
 ```toml
 [package]
