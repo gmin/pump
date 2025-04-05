@@ -4,37 +4,86 @@ Solana 智能合约项目，使用 Anchor 框架开发。
 
 ## 环境要求
 
-- Ubuntu 22.04 x64
+### Linux (Ubuntu 22.04 x64)
 - Rust 1.86.0
 - Solana 1.17.34
 - Anchor 0.28.0
 
+### macOS
+- Rust 1.86.0
+- Solana 1.17.34
+- Anchor 0.28.0
+- Xcode Command Line Tools
+
 ## 环境配置步骤
 
-### 1. 安装系统依赖
+### Linux 环境配置
+
+#### 1. 安装系统依赖
 ```bash
 sudo apt update
 sudo apt install -y build-essential pkg-config libssl-dev libudev-dev
 ```
 
-### 2. 安装 Rust
+#### 2. 安装 Rust
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
 ```
 
-### 3. 安装 Solana
+#### 3. 安装 Solana
 ```bash
 sh -c "$(curl -sSfL https://release.solana.com/v1.17.0/install)"
 export PATH="/root/.local/share/solana/install/active_release/bin:$PATH"
 ```
 
-### 4. 更新 Solana 工具链
+#### 4. 更新 Solana 工具链
 ```bash
 solana-install update
 ```
 
-### 5. 安装 Anchor
+#### 5. 安装 Anchor
+```bash
+cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+avm install 0.28.0
+avm use 0.28.0
+```
+
+### macOS 环境配置
+
+#### 1. 安装 Xcode Command Line Tools
+```bash
+xcode-select --install
+```
+
+#### 2. 安装 Homebrew（如果未安装）
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+#### 3. 安装系统依赖
+```bash
+brew install pkg-config openssl
+```
+
+#### 4. 安装 Rust
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source "$HOME/.cargo/env"
+```
+
+#### 5. 安装 Solana
+```bash
+sh -c "$(curl -sSfL https://release.solana.com/v1.17.0/install)"
+export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+```
+
+#### 6. 更新 Solana 工具链
+```bash
+solana-install update
+```
+
+#### 7. 安装 Anchor
 ```bash
 cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
 avm install 0.28.0
@@ -90,9 +139,19 @@ anchor --version  # 应显示 0.28.0
 
 ## 常见问题
 
+### Linux 环境
 1. 如果遇到 GLIBC 版本问题，确保使用兼容的 Anchor 版本
 2. 如果编译失败，检查 Cargo.toml 中的 crate-type 配置
 3. 确保 Solana 工具链已正确更新
+
+### macOS 环境
+1. 如果遇到 OpenSSL 相关错误，确保正确设置了 OpenSSL 环境变量：
+```bash
+export OPENSSL_ROOT_DIR=$(brew --prefix openssl)
+export OPENSSL_LIB_DIR=$(brew --prefix openssl)/lib
+```
+2. 如果遇到权限问题，确保已正确安装 Xcode Command Line Tools
+3. 如果遇到路径问题，确保正确设置了 PATH 环境变量
 
 ## 部署
 
