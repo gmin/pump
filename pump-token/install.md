@@ -166,4 +166,73 @@ export OPENSSL_LIB_DIR=$(brew --prefix openssl)/lib
 
 ## 部署
 
-待补充部署步骤... 
+### 1. 切换到测试网
+```bash
+# 切换到 Solana 测试网
+solana config set --url devnet
+
+# 验证当前网络
+solana config get
+```
+
+### 2. 创建或导入钱包
+```bash
+# 创建新钱包（如果还没有）
+solana-keygen new --outfile deploy-wallet.json
+
+# 或者导入现有钱包
+# solana-keygen recover 'your-seed-phrase' --outfile deploy-wallet.json
+```
+
+### 3. 获取测试网 SOL
+```bash
+# 查看当前钱包地址
+solana address -k deploy-wallet.json
+
+# 使用水龙头获取测试网 SOL（每次 2 SOL）
+solana airdrop 2 $(solana address -k deploy-wallet.json)
+```
+
+### 4. 部署合约
+```bash
+# 确保在项目根目录
+cd pump-token
+
+# 使用 Anchor 部署
+anchor deploy --provider.cluster devnet
+
+# 或者使用 Solana CLI 部署
+solana program deploy target/deploy/pump_token.so --program-id target/deploy/pump_token-keypair.json
+```
+
+### 5. 验证部署
+```bash
+# 查看程序信息
+solana program show $(solana address -k target/deploy/pump_token-keypair.json)
+
+# 查看程序日志
+solana logs $(solana address -k target/deploy/pump_token-keypair.json)
+```
+
+### 注意事项
+1. 部署前确保有足够的测试网 SOL（建议至少 2 SOL）
+2. 保存好部署钱包的密钥文件（deploy-wallet.json）
+3. 记录下部署后的程序地址，后续交互需要使用
+4. 如果部署失败，检查：
+   - 网络连接是否正常
+   - 钱包余额是否充足
+   - 程序是否编译成功
+   - 密钥文件权限是否正确
+
+### 常见问题
+1. 如果遇到 "Error: Account not found"：
+   - 确认钱包地址正确
+   - 确认已经获取了测试网 SOL
+
+2. 如果遇到 "Error: Program failed to complete"：
+   - 检查程序大小是否超过限制
+   - 确认程序编译正确
+
+3. 如果遇到 "Error: Transaction simulation failed"：
+   - 检查程序逻辑是否正确
+   - 确认所有依赖都已正确安装 
