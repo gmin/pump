@@ -5,7 +5,7 @@ description = "Created with Anchor"
 edition = "2021"
 
 [lib]
-crate-type = ["bpf", "lib"]
+crate-type = ["cdylib", "lib"]
 name = "pump_token"
 
 [features]
