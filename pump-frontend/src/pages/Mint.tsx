@@ -9,6 +9,7 @@ import {
   Button,
   CircularProgress,
   Alert,
+  Grid,
 } from '@mui/material';
 import { useWallet } from '../hooks/useWallet';
 import { apiService } from '../services/api';
@@ -22,6 +23,7 @@ const Mint: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [contractInfo, setContractInfo] = useState<{ token: Token; config: MintConfig } | null>(null);
   const [amount, setAmount] = useState('');
+  const [price, setPrice] = useState('');
 
   useEffect(() => {
     const fetchContractInfo = async () => {
@@ -31,6 +33,8 @@ const Mint: React.FC = () => {
         setLoading(true);
         const info = await apiService.getContractInfo(contractAddress);
         setContractInfo(info);
+        // 设置默认价格为最低价格
+        setPrice(info.config.minPrice.toString());
       } catch (err) {
         setError(err instanceof Error ? err.message : '获取合约信息失败');
       } finally {
@@ -42,12 +46,12 @@ const Mint: React.FC = () => {
   }, [contractAddress]);
 
   const handleMint = async () => {
-    if (!contractAddress || !amount) return;
+    if (!contractAddress || !amount || !price) return;
 
     try {
       setMinting(true);
       setError(null);
-      const response = await apiService.mintToken(contractAddress, Number(amount));
+      const response = await apiService.mintToken(contractAddress, Number(amount), Number(price));
       console.log('Mint 成功:', response);
       // TODO: 显示成功消息并跳转到合约详情页
     } catch (err) {
@@ -87,6 +91,8 @@ const Mint: React.FC = () => {
   const endTime = new Date(config.endTime);
   const isMintActive = now >= startTime && now <= endTime;
 
+  const totalCost = Number(amount) * Number(price);
+
   return (
     <Box>
       <Typography variant="h4" component="h1" gutterBottom>
@@ -101,7 +107,7 @@ const Mint: React.FC = () => {
             合约地址: {token.contractAddress}
           </Typography>
           <Typography variant="body1" gutterBottom>
-            价格: {config.price} SOL
+            价格范围: {config.minPrice} - {config.maxPrice} SOL
           </Typography>
           <Typography variant="body1" gutterBottom>
             发行量范围: {config.minAmount} - {config.maxAmount}
@@ -118,23 +124,44 @@ const Mint: React.FC = () => {
       <Card sx={{ mt: 3 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
-            购买数量
+            购买信息
           </Typography>
-          <TextField
-            fullWidth
-            type="number"
-            label="输入购买数量"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            disabled={!isMintActive || !connected}
-            sx={{ mb: 2 }}
-          />
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                type="number"
+                label="输入购买数量"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                disabled={!isMintActive || !connected}
+                inputProps={{ min: config.minAmount, max: config.maxAmount }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                type="number"
+                label="输入价格 (SOL)"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                disabled={!isMintActive || !connected}
+                inputProps={{ min: config.minPrice, max: config.maxPrice, step: 0.000000001 }}
+              />
+            </Grid>
+          </Grid>
+          {amount && price && (
+            <Typography variant="h6" sx={{ mt: 2 }}>
+              总价: {totalCost} SOL
+            </Typography>
+          )}
           <Button
             variant="contained"
             color="primary"
             fullWidth
             onClick={handleMint}
-            disabled={!isMintActive || !connected || !amount || minting}
+            disabled={!isMintActive || !connected || !amount || !price || minting}
+            sx={{ mt: 2 }}
           >
             {minting ? <CircularProgress size={24} /> : '购买'}
           </Button>

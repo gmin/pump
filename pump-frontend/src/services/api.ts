@@ -103,8 +103,8 @@ export const apiService = {
   },
 
   // 购买代币
-  mintToken: async (contractAddress: string, amount: number): Promise<{ txHash: string }> => {
-    const response = await api.post(`/tokens/${contractAddress}/mint`, { amount });
+  mintToken: async (contractAddress: string, amount: number, price: number): Promise<{ txHash: string }> => {
+    const response = await api.post(`/mint/${contractAddress}`, { amount, price });
     return response.data;
   },
 

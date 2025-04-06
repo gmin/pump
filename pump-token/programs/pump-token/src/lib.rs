@@ -45,7 +45,8 @@ impl BaseToken {
 #[account]
 pub struct MintConfig {
     pub token: Pubkey,
-    pub price: u64,
+    pub min_price: u64,      // 最低价格（lamports）
+    pub max_price: u64,      // 最高价格（lamports）
     pub min_amount: u64,
     pub max_amount: u64,
     pub start_time: i64,
@@ -61,7 +62,8 @@ pub struct MintConfig {
 impl MintConfig {
     pub const LEN: usize = 8 + // discriminator
         32 + // token
-        8 + // price
+        8 + // min_price
+        8 + // max_price
         8 + // min_amount
         8 + // max_amount
         8 + // start_time
@@ -454,7 +456,8 @@ pub struct LiquidityDestroyed {
 #[event]
 pub struct MintInitialized {
     pub token: Pubkey,
-    pub price: u64,
+    pub min_price: u64,
+    pub max_price: u64,
     pub max_amount: u64,
     pub start_time: i64,
     pub end_time: i64,
@@ -645,7 +648,8 @@ pub mod pump_token {
     // Mint模块指令
     pub fn initialize_mint(
         ctx: Context<InitializeMint>,
-        price: u64,
+        min_price: u64,
+        max_price: u64,
         min_amount: u64,
         max_amount: u64,
         start_time: i64,
@@ -653,7 +657,8 @@ pub mod pump_token {
         liquidity_percentage: u8,
         staking_percentage: u8,
     ) -> Result<()> {
-        require!(price > 0, TokenError::InvalidPrice);
+        require!(min_price > 0, TokenError::InvalidPrice);
+        require!(max_price >= min_price, TokenError::InvalidPrice);
         require!(max_amount > min_amount, TokenError::InvalidAmount);
         require!(end_time > start_time, TokenError::InvalidTime);
         require!(liquidity_percentage + staking_percentage <= 100, TokenError::InvalidPercentage);
@@ -664,7 +669,8 @@ pub mod pump_token {
 
         let mint_config = &mut ctx.accounts.mint_config;
         mint_config.token = ctx.accounts.token.key();
-        mint_config.price = price;
+        mint_config.min_price = min_price;
+        mint_config.max_price = max_price;
         mint_config.max_amount = max_amount;
         mint_config.min_amount = min_amount;
         mint_config.start_time = start_time;
@@ -677,7 +683,8 @@ pub mod pump_token {
 
         emit!(MintInitialized {
             token: mint_config.token,
-            price: mint_config.price,
+            min_price: mint_config.min_price,
+            max_price: mint_config.max_price,
             max_amount: mint_config.max_amount,
             start_time: mint_config.start_time,
             end_time: mint_config.end_time,
@@ -687,7 +694,7 @@ pub mod pump_token {
         Ok(())
     }
 
-    pub fn mint(ctx: Context<Mint>, amount: u64) -> Result<()> {
+    pub fn mint(ctx: Context<Mint>, amount: u64, price: u64) -> Result<()> {
         let mint_config = &mut ctx.accounts.mint_config;
         let current_time = Clock::get()?.unix_timestamp;
         
@@ -700,9 +707,11 @@ pub mod pump_token {
             mint_config.total_minted + amount <= mint_config.max_amount,
             TokenError::ExceedMaxAmount
         );
+        require!(price >= mint_config.min_price, TokenError::InvalidPrice);
+        require!(price <= mint_config.max_price, TokenError::InvalidPrice);
 
         // 计算支付金额和手续费
-        let payment_amount = amount.checked_mul(mint_config.price).unwrap();
+        let payment_amount = amount.checked_mul(price).unwrap();
         let fee_amount = payment_amount.checked_mul(mint_config.fee_rate as u64).unwrap().checked_div(10000).unwrap();
         let final_payment = payment_amount.checked_sub(fee_amount).unwrap();
 
