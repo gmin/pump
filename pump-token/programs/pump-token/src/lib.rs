@@ -4,7 +4,7 @@ use anchor_spl::token::TokenAccount;
 use anchor_spl::token::Token;
 use anchor_spl::metadata::Metadata;
 
-declare_id!("9D9trvro19fWvkUL2vW7ShMDsExFNMX7Yc4upaSFECKz");
+declare_id!("7nVQ3g2ypfPFDpHS6wrvH1omCxaJ7MUg3fHU7UkDRhkA");
 
 // 状态定义
 #[account]

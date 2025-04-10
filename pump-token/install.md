@@ -235,4 +235,54 @@ solana logs $(solana address -k target/deploy/pump_token-keypair.json)
 
 3. 如果遇到 "Error: Transaction simulation failed"：
    - 检查程序逻辑是否正确
-   - 确认所有依赖都已正确安装 
+   - 确认所有依赖都已正确安装
+
+# Pump Token 部署信息
+
+## 程序信息
+- 程序 ID（合约地址）：`7nVQ3g2ypfPFDpHS6wrvH1omCxaJ7MUg3fHU7UkDRhkA`
+- 部署网络：Devnet
+- 部署文件：`target/deploy/pump_token.so`
+- 程序大小：433KB
+
+## 部署账户
+- 升级权限：`/Users/tonykwok/.config/solana/id.json`
+- 账户租金：1141440 lamports (约 0.001 SOL)
+
+## 部署钱包信息
+- 部署钱包地址：`CChExWbRZN78LDtxKxQvYupigkEgVYr5BhAcehsbhi3c`
+- 部署钱包密钥文件：`/Users/tonykwok/.config/solana/id.json`
+- 程序密钥对文件：`target/deploy/pump_token-keypair.json`
+
+## 程序功能
+1. 代币初始化 (`initializeToken`)
+2. 代币元数据更新 (`updateTokenMetadata`)
+3. 管理员功能
+   - 更新管理员 (`updateAdmin`)
+   - 更新国库地址 (`updateTreasury`)
+   - 暂停代币 (`pauseToken`)
+   - 恢复代币 (`unpauseToken`)
+4. 代币操作
+   - 铸造代币 (`mintToken`)
+   - 销毁代币 (`burnToken`)
+5. 代币账户管理
+   - 创建代币账户 (`createTokenAccount`)
+   - 关闭代币账户 (`closeTokenAccount`)
+6. 代币转账
+   - 转账代币 (`transferToken`)
+   - 授权转账 (`approveToken`)
+   - 执行授权转账 (`transferFromToken`)
+7. 代币销毁
+   - 销毁代币账户 (`burnTokenAccount`)
+8. 代币账户管理
+   - 冻结代币账户 (`freezeTokenAccount`)
+   - 解冻代币账户 (`thawTokenAccount`)
+
+## 部署步骤
+1. 构建项目：`anchor build`
+2. 部署项目：`anchor deploy`
+
+## 注意事项
+- 确保 `declare_id!` 中的程序 ID 与部署的程序 ID 匹配
+- 部署前确保账户有足够的 SOL 支付租金
+- 建议在 Devnet 上充分测试后再部署到主网
