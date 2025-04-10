@@ -52,6 +52,4 @@ yarn-error.log*
 # Keys
 *.pem
 deploy-wallet.json
-**/deploy-wallet.json
-target/deploy/key-pair.json
-**/target/deploy/key-pair.json 
+**/deploy-wallet.json 

@@ -9,7 +9,6 @@ crate-type = ["cdylib", "lib"]
 name = "pump_token"
 
 [features]
-default = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
