@@ -1,0 +1,28 @@
+html {
+  height: 100%;
+  font-size: 10vw;
+}
+
+body {
+  position: relative;
+  height: 100%;
+  margin: 0 auto;
+  font-size: 14px;
+  color: var(--white);
+  background: var(--background);
+  user-select: none;
+}
+
+@media screen and (width <= 375px) {
+  html {
+    /* prettier-ignore */
+    font-size: 37.5PX;
+  }
+}
+
+@media screen and (width >= 720px) {
+  html {
+    /* prettier-ignore */
+    font-size: 72PX;
+  }
+}
